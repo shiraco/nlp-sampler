@@ -2,7 +2,7 @@
 from collections import namedtuple
 
 import MeCab
-
+from pyknp import Juman
 
 class MeCabTokenizer(object):
 
@@ -42,9 +42,15 @@ class MeCabTokenizer(object):
             token.infl_type = feature[4]    # 活用型
             token.infl_form = feature[5]    # 活用形
             token.base_form = feature[6]    # 原型
-            token.reading = feature[7]      # 読み
-            token.phonetic = feature[8]     # 発音
-            tokens.append(token)
+
+            if len(feature) > 7:
+                token.reading = feature[7]      # 読み
+                token.phonetic = feature[8]     # 発音
+            else:
+                token.reading = ""
+                token.phonetic = ""
+
+            tokens.append(token) if token.pos != 'BOS/EOS' else None
             node = node.next
 
         return tokens
@@ -55,10 +61,33 @@ class MeCabTokenizer(object):
         return tokens
 
 
+class JumanTokenizer(object):
+
+    def __init__(self):
+        self._t = Juman()
+
+    def separate_words(self, sent):
+        words = [token.midasi for token in self.tokenize(sent)]
+
+        return words
+
+    def tokenize(self, sent):
+        tokens = []
+
+        res = self._t.analysis(sent)
+
+        for mrph in res.mrph_list():
+            token = namedtuple('Token', 'midasi')
+            token.midasi = mrph.midasi    # 表層形
+            tokens.append(token)
+
+        return tokens
+
 if __name__ == '__main__':
     tokenizer = MeCabTokenizer()
     tokenizer_neologd = MeCabTokenizer(sys_dic_path='/usr/local/lib/mecab/dic/mecab-ipadic-neologd')
     sent = "昨日の新垣結衣が出演していた逃げ恥を見逃した"
+    # sent = "昨日のキムタクが出演していたドラマを見逃した"
 
     token = tokenizer.separate_words(sent)
     yomi = tokenizer.yomi(sent)
